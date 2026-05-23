@@ -1,0 +1,23 @@
+2026-05-13T20:27:42Z mailserver01 postfix/smtpd[1234]: NOQUEUE: reject: RCPT from unknown[103.14.120.67]: 550 5.7.1 SPF check failed; from=<badguy@malicious-sender.xyz> to=<john.doe@company.com> proto=SMTP helo=<mail.microsoft-support.com>
+2026-05-13T20:27:43Z mailserver01 postfix/smtpd[1234]: connect from unknown[103.14.120.67]
+2026-05-13T20:27:43Z mailserver01 postfix/smtpd[1234]: A1B2C: client=unknown[103.14.120.67]
+2026-05-13T20:27:44Z mailserver01 postfix/cleanup[1235]: A1B2C: message-id=<phish-20260513-001@microsoft-support.com>
+2026-05-13T20:27:44Z mailserver01 postfix/qmgr[1236]: A1B2C: from=<badguy@malicious-sender.xyz>, size=2048, nrcpt=1 (queue active)
+2026-05-13T20:27:44Z mailserver01 spamd[5678]: result: Y 18 - DMARC_FAIL,SPF_FAIL,DKIM_NONE,LOOKALIKE_DOMAIN,URGENT_SUBJECT pts=18.4 required=5.0 tests=DMARC_FAIL,SPF_FAIL,DKIM_NONE,LOOKALIKE_DOMAIN,URGENT_SUBJECT autolearn=spam
+2026-05-13T20:27:44Z mailserver01 postfix/local[1237]: A1B2C: to=<john.doe@company.com>, relay=local, delay=0.2, status=delivered
+2026-05-13T20:27:44Z mailserver01 dmarc-filter[2345]: Authentication-Results: mailserver01; dmarc=fail (p=NONE) header.from=microsoft-support.com
+2026-05-13T20:27:44Z mailserver01 dmarc-filter[2345]: Authentication-Results: mailserver01; spf=fail smtp.mailfrom=malicious-sender.xyz
+2026-05-13T20:27:44Z mailserver01 dmarc-filter[2345]: Authentication-Results: mailserver01; dkim=none
+2026-05-13T20:27:45Z mailserver01 postfix/smtpd[1234]: disconnect from unknown[103.14.120.67] ehlo=1 mail=1 rcpt=1 data=1 quit=1 commands=5
+2026-05-13T20:27:45Z mailserver01 urlfilter[9012]: ALERT: Malicious URL detected in email A1B2C - http://185.199.108.153/owa/auth/logon.aspx - category=phishing src_ip=103.14.120.67 sender=badguy@malicious-sender.xyz recipient=john.doe@company.com
+2026-05-13T20:27:46Z mailserver01 urlfilter[9012]: ALERT: Credential harvesting page detected - URL=http://185.199.108.153/owa/auth/logon.aspx mimics=outlook-webmail threat_score=95
+2026-05-13T20:28:01Z mailserver01 postfix/smtpd[1234]: connect from unknown[103.14.120.67]
+2026-05-13T20:28:02Z mailserver01 postfix/smtpd[1234]: B2C3D: client=unknown[103.14.120.67]
+2026-05-13T20:28:02Z mailserver01 spamd[5678]: result: Y 18 - DMARC_FAIL,SPF_FAIL,DKIM_NONE,LOOKALIKE_DOMAIN,URGENT_SUBJECT pts=18.4 required=5.0 tests=DMARC_FAIL,SPF_FAIL,DKIM_NONE,LOOKALIKE_DOMAIN,URGENT_SUBJECT autolearn=spam
+2026-05-13T20:28:02Z mailserver01 postfix/local[1237]: B2C3D: to=<jane.smith@company.com>, relay=local, delay=0.2, status=delivered
+2026-05-13T20:28:03Z mailserver01 urlfilter[9012]: ALERT: Malicious URL detected in email B2C3D - http://185.199.108.153/owa/auth/logon.aspx - category=phishing src_ip=103.14.120.67 sender=badguy@malicious-sender.xyz recipient=jane.smith@company.com
+2026-05-13T20:30:15Z mailserver01 postfix/smtpd[1234]: connect from unknown[103.14.120.67]
+2026-05-13T20:30:16Z mailserver01 postfix/smtpd[1234]: C3D4E: client=unknown[103.14.120.67]
+2026-05-13T20:30:16Z mailserver01 spamd[5678]: result: Y 20 - DMARC_FAIL,SPF_FAIL,DKIM_NONE,LOOKALIKE_DOMAIN,URGENT_SUBJECT,IMPERSONATION pts=20.1 required=5.0 tests=DMARC_FAIL,SPF_FAIL,DKIM_NONE,LOOKALIKE_DOMAIN,URGENT_SUBJECT,IMPERSONATION autolearn=spam
+2026-05-13T20:30:16Z mailserver01 postfix/local[1237]: C3D4E: to=<bob.wilson@company.com>, relay=local, delay=0.2, status=delivered
+2026-05-13T20:30:17Z mailserver01 urlfilter[9012]: ALERT: Malicious URL detected in email C3D4E - http://185.199.108.153/owa/auth/logon.aspx - category=phishing src_ip=103.14.120.67 sender=badguy@malicious-sender.xyz recipient=bob.wilson@company.com

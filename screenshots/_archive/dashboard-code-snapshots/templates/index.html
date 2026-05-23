@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SOC Phishing Triage Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg:        #0a0e1a;
+      --surface:   #111827;
+      --surface2:  #1a2235;
+      --border:    #1e2d45;
+      --accent:    #3b82f6;
+      --accent2:   #6366f1;
+      --red:       #ef4444;
+      --orange:    #f97316;
+      --yellow:    #eab308;
+      --green:     #22c55e;
+      --text:      #e2e8f0;
+      --muted:     #64748b;
+      --mono:      'JetBrains Mono', monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── Top Bar ── */
+    .topbar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .topbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .topbar-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .topbar-title { font-size: 1rem; font-weight: 600; }
+    .topbar-subtitle { font-size: 0.72rem; color: var(--muted); margin-top: 1px; }
+    .topbar-right { display: flex; align-items: center; gap: 1rem; }
+    .case-badge {
+      background: rgba(59,130,246,0.12);
+      border: 1px solid rgba(59,130,246,0.3);
+      color: var(--accent);
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      border-radius: 6px;
+    }
+    .live-dot {
+      width: 8px; height: 8px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34,197,94,0.4); }
+      50%      { opacity: .8; box-shadow: 0 0 0 6px rgba(34,197,94,0); }
+    }
+    .live-label { font-size: 0.72rem; color: var(--green); font-weight: 500; }
+
+    /* ── Main Layout ── */
+    main { max-width: 1300px; margin: 0 auto; padding: 2rem; }
+
+    /* ── Alert Banner (if CRITICAL) ── */
+    .alert-banner {
+      background: linear-gradient(90deg, rgba(239,68,68,0.15), rgba(239,68,68,0.05));
+      border: 1px solid rgba(239,68,68,0.4);
+      border-left: 4px solid var(--red);
+      border-radius: 8px;
+      padding: 14px 20px;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      animation: fadeIn 0.4s ease;
+    }
+    .alert-banner span { font-size: 0.88rem; }
+    .alert-banner strong { color: var(--red); }
+    .alert-banner.hidden { display: none; }
+
+    /* ── Stat Cards ── */
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem; }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      transition: border-color 0.2s;
+    }
+    .stat-card:hover { border-color: var(--accent); }
+    .stat-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 8px; }
+    .stat-value { font-size: 2rem; font-weight: 700; font-family: var(--mono); }
+    .stat-value.red    { color: var(--red); }
+    .stat-value.orange { color: var(--orange); }
+    .stat-value.green  { color: var(--green); }
+    .stat-value.blue   { color: var(--accent); }
+    .stat-sub { font-size: 0.72rem; color: var(--muted); margin-top: 4px; }
+
+    /* ── Section Header ── */
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+    .section-title { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+
+    /* ── Run Button ── */
+    .run-btn {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 18px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex; align-items: center; gap: 8px;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .run-btn:hover  { opacity: 0.9; }
+    .run-btn:active { transform: scale(0.97); }
+
+    /* ── IOC Table ── */
+    .table-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 2rem;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    thead { background: var(--surface2); }
+    th {
+      padding: 12px 16px;
+      text-align: left;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 13px 16px;
+      font-size: 0.85rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(59,130,246,0.04); }
+
+    .ioc-value {
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      color: #a5b4fc;
+    }
+
+    /* ── Severity Badges ── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .badge.malicious  { background: rgba(239,68,68,0.15);  color: var(--red);    border: 1px solid rgba(239,68,68,0.3);  }
+    .badge.suspicious { background: rgba(249,115,22,0.15); color: var(--orange); border: 1px solid rgba(249,115,22,0.3); }
+    .badge.clean      { background: rgba(34,197,94,0.12);  color: var(--green);  border: 1px solid rgba(34,197,94,0.3);  }
+    .badge.unknown    { background: rgba(100,116,139,0.15);color: var(--muted);  border: 1px solid rgba(100,116,139,0.3);}
+
+    /* ── VT Link ── */
+    .vt-link {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.78rem;
+      font-weight: 500;
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 8px;
+      border: 1px solid rgba(59,130,246,0.3);
+      border-radius: 6px;
+      transition: background 0.15s;
+    }
+    .vt-link:hover { background: rgba(59,130,246,0.12); }
+
+    /* ── Timeline ── */
+    .timeline-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .timeline { list-style: none; padding: 0; }
+    .tl-item {
+      display: flex; gap: 16px; align-items: flex-start;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      animation: fadeIn 0.4s ease both;
+    }
+    .tl-item:last-child { border-bottom: none; }
+    .tl-time  { font-family: var(--mono); font-size: 0.75rem; color: var(--muted); min-width: 160px; padding-top: 2px; }
+    .tl-dot   { width: 10px; height: 10px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+    .tl-dot.red    { background: var(--red); }
+    .tl-dot.orange { background: var(--orange); }
+    .tl-dot.blue   { background: var(--accent); }
+    .tl-dot.green  { background: var(--green); }
+    .tl-text  { font-size: 0.83rem; line-height: 1.5; }
+
+    /* ── MITRE Table ── */
+    .mitre-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .mitre-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+    }
+    .mitre-id   { font-family: var(--mono); font-size: 0.78rem; color: var(--accent); margin-bottom: 4px; }
+    .mitre-name { font-size: 0.85rem; font-weight: 500; }
+    .mitre-phase{ font-size: 0.72rem; color: var(--muted); margin-top: 3px; }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      padding: 2rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+    }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    .fade-in { animation: fadeIn 0.5s ease both; }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .mitre-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-brand">
+    <div class="topbar-icon">🛡️</div>
+    <div>
+      <div class="topbar-title">Phishing Incident Command Center</div>
+      <div class="topbar-subtitle">SOC Triage Dashboard — Automated IOC Enrichment</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span class="case-badge">{{ report.case_id }}</span>
+    <div style="display:flex;align-items:center;gap:6px;">
+      <div class="live-dot"></div>
+      <span class="live-label">ACTIVE</span>
+    </div>
+  </div>
+</div>
+
+<main>
+
+  <!-- CRITICAL ALERT BANNER -->
+  {% if report.malicious_count > 0 %}
+  <div class="alert-banner fade-in">
+    <span style="font-size:1.2rem;">🚨</span>
+    <span><strong>HIGH SEVERITY ALERT:</strong> {{ report.malicious_count }} malicious IOC(s) confirmed. Immediate containment action required. Case ID: <strong>{{ report.case_id }}</strong></span>
+  </div>
+  {% endif %}
+
+  <!-- STAT CARDS -->
+  <div class="stats">
+    <div class="stat-card fade-in">
+      <div class="stat-label">Total IOCs</div>
+      <div class="stat-value blue">{{ report.total_iocs }}</div>
+      <div class="stat-sub">Across {{ report.ioc_types }} categories</div>
+    </div>
+    <div class="stat-card fade-in">
+      <div class="stat-label">🔴 Malicious</div>
+      <div class="stat-value red">{{ report.malicious_count }}</div>
+      <div class="stat-sub">Confirmed threat indicators</div>
+    </div>
+    <div class="stat-card fade-in">
+      <div class="stat-label">⚠️ Suspicious</div>
+      <div class="stat-value orange">{{ report.suspicious_count }}</div>
+      <div class="stat-sub">Requires further review</div>
+    </div>
+    <div class="stat-card fade-in">
+      <div class="stat-label">✅ Clean</div>
+      <div class="stat-value green">{{ report.clean_count }}</div>
+      <div class="stat-sub">No threat detected</div>
+    </div>
+  </div>
+
+  <!-- IOC TABLE -->
+  <div class="section-header">
+    <span class="section-title">🔍 IOC Enrichment Results</span>
+    <form method="POST" action="/run">
+      <button type="submit" class="run-btn">▶ Re-Run Enrichment</button>
+    </form>
+  </div>
+  <div class="table-wrap fade-in">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>IOC Value</th>
+          <th>Type</th>
+          <th>Source</th>
+          <th>Verdict</th>
+          <th>Platform</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ioc in report.iocs %}
+        <tr>
+          <td style="color:var(--muted);font-family:var(--mono);font-size:0.75rem;">{{ loop.index }}</td>
+          <td><span class="ioc-value">{{ ioc.value }}</span></td>
+          <td style="color:var(--muted);font-size:0.78rem;">{{ ioc.type }}</td>
+          <td style="color:var(--muted);font-size:0.78rem;">{{ ioc.source }}</td>
+          <td>
+            {% if ioc.verdict == 'Malicious' %}
+              <span class="badge malicious">🔴 Malicious</span>
+            {% elif ioc.verdict == 'Suspicious' %}
+              <span class="badge suspicious">⚠️ Suspicious</span>
+            {% elif ioc.verdict == 'Clean' %}
+              <span class="badge clean">✅ Clean</span>
+            {% else %}
+              <span class="badge unknown">❓ Unknown</span>
+            {% endif %}
+          </td>
+          <td style="color:var(--muted);font-size:0.78rem;">{{ ioc.platform }}</td>
+          <td>
+            {% if ioc.vt_link %}
+              <a class="vt-link" href="{{ ioc.vt_link }}" target="_blank">🔗 VirusTotal</a>
+            {% else %}
+              <span style="color:var(--muted);font-size:0.75rem;">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- TIMELINE -->
+  <div class="section-header">
+    <span class="section-title">📅 Incident Timeline</span>
+  </div>
+  <div class="timeline-wrap fade-in">
+    <ul class="timeline">
+      {% for event in report.timeline %}
+      <li class="tl-item">
+        <span class="tl-time">{{ event.time }}</span>
+        <div class="tl-dot {{ event.color }}"></div>
+        <span class="tl-text">{{ event.description }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <!-- MITRE ATT&CK -->
+  <div class="section-header">
+    <span class="section-title">🗺️ MITRE ATT&CK Mapping</span>
+  </div>
+  <div class="mitre-grid">
+    <div class="mitre-card fade-in">
+      <div class="mitre-id">T1566.001</div>
+      <div class="mitre-name">Phishing: Spearphishing Link</div>
+      <div class="mitre-phase">Initial Access</div>
+    </div>
+    <div class="mitre-card fade-in">
+      <div class="mitre-id">T1078</div>
+      <div class="mitre-name">Valid Accounts</div>
+      <div class="mitre-phase">Credential Access — Intended Outcome</div>
+    </div>
+    <div class="mitre-card fade-in">
+      <div class="mitre-id">T1036</div>
+      <div class="mitre-name">Masquerading</div>
+      <div class="mitre-phase">Defense Evasion — Lookalike Domain</div>
+    </div>
+    <div class="mitre-card fade-in">
+      <div class="mitre-id">T1056</div>
+      <div class="mitre-name">Input Capture</div>
+      <div class="mitre-phase">Collection — Credential Harvest Page</div>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  Phishing IR Lab &nbsp;|&nbsp; Case {{ report.case_id }} &nbsp;|&nbsp;
+  Generated: {{ report.generated_at }} &nbsp;|&nbsp;
+  Analyst: {{ report.analyst }}
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,56 @@
+[
+  {
+    "id": "PHI-2026-001",
+    "title": "Credential harvesting - OWA lure",
+    "type": "credential_harvesting",
+    "status": "open",
+    "priority": "high",
+    "recipient": "bob.wilson@company.com",
+    "sender": "badguy@malicious-sender.xyz",
+    "src_ip": "103.14.120.67",
+    "mitre": ["T1566.002", "T1078"],
+    "auth": {"spf": "fail", "dkim": "none", "dmarc": "fail"},
+    "iocs": [
+      {"type": "url", "value": "http://185.199.108.153/owa/auth/logon.aspx", "severity": "HIGH"},
+      {"type": "ip", "value": "103.14.120.67", "severity": "HIGH"},
+      {"type": "domain", "value": "malicious-sender.xyz", "severity": "MEDIUM"}
+    ],
+    "notes": "OWA credential harvest. SPF/DMARC failed. Block URL and sender domain."
+  },
+  {
+    "id": "PHI-2026-002",
+    "title": "Malicious attachment - macro doc",
+    "type": "malicious_attachment",
+    "status": "open",
+    "priority": "high",
+    "recipient": "jane.smith@company.com",
+    "sender": "hr-payroll@fake-intranet.net",
+    "src_ip": "198.51.100.44",
+    "mitre": ["T1566.001", "T1204.002"],
+    "auth": {"spf": "fail", "dkim": "fail", "dmarc": "fail"},
+    "iocs": [
+      {"type": "hash", "value": "a3f5c9e1b2d8470f9e8c6a1b4d2e7f0c", "severity": "HIGH"},
+      {"type": "filename", "value": "Q2_Payroll_Update.docm", "severity": "HIGH"},
+      {"type": "ip", "value": "198.51.100.44", "severity": "MEDIUM"}
+    ],
+    "notes": "Macro-enabled doc attachment. Isolate host if opened. Hunt Sysmon EventCode=1."
+  },
+  {
+    "id": "PHI-2026-003",
+    "title": "BEC fraud - urgent wire transfer",
+    "type": "bec_fraud",
+    "status": "investigating",
+    "priority": "critical",
+    "recipient": "finance@company.com",
+    "sender": "ceo@company-com.xyz",
+    "src_ip": "203.0.113.10",
+    "mitre": ["T1534", "T1657"],
+    "auth": {"spf": "fail", "dkim": "none", "dmarc": "fail"},
+    "iocs": [
+      {"type": "domain", "value": "company-com.xyz", "severity": "HIGH"},
+      {"type": "email", "value": "ceo@company-com.xyz", "severity": "HIGH"},
+      {"type": "ip", "value": "203.0.113.10", "severity": "MEDIUM"}
+    ],
+    "notes": "Display-name spoof of CEO. No link — pure social engineering. Escalate to finance lead."
+  }
+]

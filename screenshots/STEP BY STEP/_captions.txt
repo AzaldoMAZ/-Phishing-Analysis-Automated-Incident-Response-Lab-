@@ -1,0 +1,23 @@
+01-virtualbox-lab-setup.png | VirtualBox lab environment
+02-environment-splunk-host.png | Splunk / lab host ready
+03-phishing-eml-sample.png | Phishing .eml sample
+04-email-header-analysis.png | SPF / DKIM / DMARC header analysis
+05-ioc-extraction-spreadsheet.png | IOC extraction spreadsheet
+06-splunk-ingest-mailserver01.png | Splunk data ingest host mailserver01
+07-splunk-phishing-log-search.png | Search phishing_mail.log in Splunk
+08-splunk-spl-detection-table.png | SPL detection IOC table
+09-splunk-save-as-alert.png | Save detection as scheduled alert
+10-splunk-alert-email-action.png | Alert trigger email action
+11-splunk-stats-by-recipient.png | Stats count by recipient
+12-splunk-stats-by-src-ip.png | Stats count by src_ip
+13-splunk-repeat-phishing-alert.png | Alert PHI-2026-001 repeat source
+14-python-ioc-enrichment-code.png | ioc_enrichment.py script
+15-terminal-enrichment-run.png | Terminal enrichment engine running
+16-ioc-enrichment-summary.png | IOC summary output
+17-shuffle-soar-overview.png | Shuffle SOAR workflow overview
+18-shuffle-workflow-build.png | Shuffle workflow nodes
+19-shuffle-webhook-execution.png | Shuffle webhook execution success
+20-quishing-qr-lure.png | Quishing QR lure artifact
+21-flask-soc-dashboard.png | Flask SOC console dashboard
+22-flask-live-triage.png | Flask live IOC triage page
+23-flask-case-detail.png | Flask case detail PHI-2026-004 quishing

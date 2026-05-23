@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}{{ case.id }} | Phishing IR Lab{% endblock %}
+
+{% block content %}
+<p><a href="/">&larr; Back to dashboard</a></p>
+
+<div class="cards" style="margin-top:0.5rem">
+  <div class="card">
+    <div class="label">Case ID</div>
+    <div class="value ok" style="font-size:1.1rem">{{ case.id }}</div>
+  </div>
+  <div class="card">
+    <div class="label">Message ID</div>
+    <div class="value high" style="font-size:1rem">{{ case.msg_id }}</div>
+  </div>
+  <div class="card">
+    <div class="label">Detected</div>
+    <div class="value" style="font-size:0.9rem;color:var(--orange)">{{ case.timestamp }}</div>
+  </div>
+  <div class="card">
+    <div class="label">Source IP</div>
+    <div class="value critical" style="font-size:1rem">{{ case.src_ip }}</div>
+  </div>
+</div>
+
+<h2 style="color:var(--green);font-size:1rem;margin:0.5rem 0 0">{{ case.title }}</h2>
+  <p class="meta" style="color:var(--muted);font-size:0.85rem">
+  Host {{ case.host }} · Splunk: {{ case.splunk_alert }} · Category: {{ case.category }}
+  {% if case.channel %} · Channel: {{ case.channel }}{% endif %}
+</p>
+
+<div class="grid-2">
+  <div class="panel">
+    <h2>Email details</h2>
+    <table>
+      <tr><th>Sender</th><td class="mono">{{ case.sender }}</td></tr>
+      <tr><th>Recipient</th><td>{{ case.recipient }}</td></tr>
+      <tr><th>Delivered</th><td>{{ case.delivered_at or '—' }}</td></tr>
+      <tr><th>Phishing URL</th><td class="mono"><a href="{{ case.url }}" target="_blank" rel="noopener">{{ case.url }}</a></td></tr>
+      <tr><th>Payload IP</th><td class="mono">185.199.108.153</td></tr>
+    </table>
+  </div>
+  <div class="panel">
+    <h2>Authentication (from logs)</h2>
+    <p>SPF: <span class="fail">{{ case.auth.spf|upper }}</span></p>
+    <p>DKIM: <span class="fail">{{ case.auth.dkim|upper }}</span></p>
+    <p>DMARC: <span class="fail">{{ case.auth.dmarc|upper }}</span></p>
+    <p style="margin-top:0.75rem;color:var(--muted);font-size:0.8rem">SpamAssassin flags:</p>
+    <div>
+      {% for flag in case.spamd_flags %}
+        <span class="badge high" style="margin:0.15rem">{{ flag }}</span>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>MITRE ATT&CK</h2>
+  {% for t in case.mitre %}
+    <span class="badge investigating">{{ t }}</span>
+  {% endfor %}
+</div>
+
+<div class="panel">
+  <h2>Indicators of compromise</h2>
+  <table>
+    <thead>
+      <tr><th>Type</th><th>Value</th><th>Label</th><th>Severity</th><th>Enrichment</th></tr>
+    </thead>
+    <tbody>
+      {% for ioc in case.iocs %}
+      <tr>
+        <td>{{ ioc.type }}</td>
+        <td class="mono">{{ ioc.value }}</td>
+        <td>{{ ioc.label }}</td>
+        <td class="sev-{{ ioc.severity }}">{{ ioc.severity }}</td>
+        <td>
+          {% if ioc.get('enrichment') %}
+            {% set findings = ioc.enrichment.get('findings', []) %}
+            {% if findings and findings[0].get('verdict') %}
+              {{ findings[0].verdict }}
+            {% elif findings and findings[0].get('error') %}
+              <span style="color:var(--muted)">API: {{ findings[0].error[:40] }}…</span>
+            {% else %}
+              <span style="color:var(--muted)">See ioc_report.json</span>
+            {% endif %}
+          {% else %}
+            <span style="color:var(--yellow)">Run ioc_enrichment.py</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if case.ioc_report_time %}
+  <p style="color:var(--muted);font-size:0.75rem;margin-top:0.5rem">Last enrichment: {{ case.ioc_report_time }}</p>
+  {% endif %}
+</div>
+
+<div class="panel">
+  <h2>Investigation timeline (this message)</h2>
+  <table>
+    <thead><tr><th>Time (UTC)</th><th>Event</th><th>Summary</th></tr></thead>
+    <tbody>
+      {% for item in case.timeline %}
+      <tr>
+        <td style="color:var(--muted);white-space:nowrap">{{ item.time }}</td>
+        <td><span class="source-tag">{{ item.type }}</span></td>
+        <td>{{ item.summary }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="3">No timeline events linked to this message ID.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="panel">
+  <h2>Analyst disposition</h2>
+  <div class="filter-bar">
+    <select id="disposition">
+      <option value="">Select disposition…</option>
+      <option value="true_positive">True Positive — Phishing</option>
+      <option value="false_positive">False Positive</option>
+      <option value="benign">Benign — Simulated lab traffic</option>
+    </select>
+    <button type="button" id="saveDisposition" style="background:var(--green);color:#000;border:none;padding:0.45rem 0.9rem;border-radius:6px;cursor:pointer;font-weight:600">
+      Save (local)
+    </button>
+  </div>
+  <p id="dispositionMsg" style="color:var(--muted);font-size:0.85rem"></p>
+  <p style="margin-top:0.75rem"><strong>Notes:</strong> {{ case.notes }}</p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const key = 'disposition_{{ case.id }}';
+  const sel = document.getElementById('disposition');
+  const msg = document.getElementById('dispositionMsg');
+  const saved = localStorage.getItem(key);
+  if (saved) { sel.value = saved; msg.textContent = 'Saved locally: ' + saved; }
+  document.getElementById('saveDisposition').addEventListener('click', () => {
+    if (!sel.value) return;
+    localStorage.setItem(key, sel.value);
+    msg.textContent = 'Disposition saved in browser: ' + sel.value;
+    msg.style.color = '#3fb950';
+  });
+</script>
+{% endblock %}

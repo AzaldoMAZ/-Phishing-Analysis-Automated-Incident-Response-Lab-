@@ -1,0 +1,39 @@
+# API Keys & Secrets — NEVER commit these
+*.env
+.env
+config.py
+secrets.py
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Generated reports (contain sensitive IOC data)
+ioc_report.json
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs (raw)
+*.log.bak
+
+# Screenshots — keep organized in /screenshots only
+*.png
+*.jpg
+*.jpeg
+!screenshots/**

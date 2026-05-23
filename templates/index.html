@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+{% block title %}Dashboard | Phishing IR Lab{% endblock %}
+
+{% block content %}
+<div class="cards">
+  <div class="card">
+    <div class="label">Log Events</div>
+    <div class="value ok">{{ stats.total_log_events }}</div>
+    <div class="sub">phishing_mail.log</div>
+  </div>
+  <div class="card">
+    <div class="label">URL Alerts</div>
+    <div class="value critical">{{ stats.url_alerts }}</div>
+    <div class="sub">link phishing</div>
+  </div>
+  <div class="card">
+    <div class="label">Quishing</div>
+    <div class="value critical">{{ stats.quishing_alerts }}</div>
+    <div class="sub">QR decode alerts</div>
+  </div>
+  <div class="card">
+    <div class="label">Open Cases</div>
+    <div class="value high">{{ open_count }}</div>
+    <div class="sub">from parsed alerts</div>
+  </div>
+  <div class="card">
+    <div class="label">Attacker IP</div>
+    <div class="value high">103.14.120.67</div>
+    <div class="sub">{{ stats.unique_recipients }} victims</div>
+  </div>
+  <div class="card">
+    <div class="label">Campaign Window</div>
+    <div class="value" style="font-size:0.95rem;color:var(--orange)">{{ stats.campaign_start[11:19] }}–{{ stats.campaign_end[11:19] }} UTC</div>
+    <div class="sub">2026-05-13</div>
+  </div>
+  <div class="card">
+    <div class="label">Splunk Rule</div>
+    <div class="value ok" style="font-size:0.85rem">PHI-2026-001</div>
+    <div class="sub">Phishing Email Detected</div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="panel">
+    <h2>Alert timeline (UTC)</h2>
+    <canvas id="timelineChart" height="120"></canvas>
+  </div>
+  <div class="panel">
+    <h2>Recipients targeted</h2>
+    <canvas id="recipientChart" height="120"></canvas>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Cases — parsed from mail logs</h2>
+  <div class="filter-bar">
+    <input type="text" id="searchCases" placeholder="Filter by case ID, IP, email, message ID…">
+    <select id="filterPriority">
+      <option value="">All priorities</option>
+      <option value="critical">Critical</option>
+      <option value="high">High</option>
+    </select>
+    <select id="filterStatus">
+      <option value="">All statuses</option>
+      <option value="open">Open</option>
+    </select>
+  </div>
+  <table id="casesTable">
+    <thead>
+      <tr>
+        <th>Detected (UTC)</th>
+        <th>Case ID</th>
+        <th>Msg ID</th>
+        <th>Recipient</th>
+        <th>Src IP</th>
+        <th>Priority</th>
+        <th>Status</th>
+        <th>MITRE</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for case in cases %}
+      <tr class="case-row"
+          data-priority="{{ case.priority }}"
+          data-status="{{ case.status }}"
+          data-search="{{ case.id }} {{ case.msg_id }} {{ case.recipient }} {{ case.src_ip }} {{ case.sender }}">
+        <td>{{ case.timestamp }}</td>
+        <td><a href="/case/{{ case.id }}" onclick="event.stopPropagation()">{{ case.id }}</a></td>
+        <td class="mono">{{ case.msg_id }}</td>
+        <td>{{ case.recipient }}</td>
+        <td class="mono">{{ case.src_ip }}</td>
+        <td><span class="badge {{ case.priority }}">{{ case.priority|upper }}</span></td>
+        <td><span class="badge {{ case.status }}">{{ case.status }}</span></td>
+        <td class="mono" style="font-size:0.75rem">{{ case.mitre|join(', ') }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="panel">
+  <h2>Live event stream</h2>
+  <div class="filter-bar">
+    <select id="filterEventType">
+      <option value="">All event types</option>
+      <option value="alert">URL alerts</option>
+      <option value="spam_analysis">Spam analysis</option>
+      <option value="delivery">Delivery</option>
+      <option value="credential_harvest">Credential harvest</option>
+      <option value="quishing">Quishing (QR)</option>
+    </select>
+  </div>
+  <table id="eventsTable">
+    <thead>
+      <tr>
+        <th>Time (UTC)</th>
+        <th>Type</th>
+        <th>Severity</th>
+        <th>Details</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ev in events %}
+      <tr class="event-row" data-type="{{ ev.event_type }}">
+        <td>{{ ev.timestamp }}</td>
+        <td><span class="source-tag">{{ ev.event_type }}</span></td>
+        <td><span class="badge {{ ev.severity|lower if ev.severity else 'medium' }}">{{ ev.get('severity', 'INFO') }}</span></td>
+        <td class="mono">
+          {% if ev.event_type == 'alert' %}
+            {{ ev.recipient }} — {{ ev.url }}
+          {% elif ev.event_type == 'spam_analysis' %}
+            pts={{ ev.pts }} — {{ ev.flags[:3]|join(', ') }}
+          {% elif ev.event_type == 'delivery' %}
+            {{ ev.msg_id }} → {{ ev.recipient }} ({{ ev.status }})
+          {% elif ev.event_type == 'credential_harvest' %}
+            OWA mimic score={{ ev.threat_score }} — {{ ev.url }}
+          {% else %}
+            {{ ev.get('raw', '')[:80] }}
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const cases = {{ cases|tojson }};
+
+  // Timeline chart — real alert timestamps
+  const labels = cases.map(c => c.timestamp.replace('T', ' ').replace('Z', ''));
+  const scores = cases.map(() => 1);
+  new Chart(document.getElementById('timelineChart'), {
+    type: 'bar',
+    data: {
+      labels: labels.map(l => l.slice(11, 19)),
+      datasets: [{
+        label: 'URL alerts',
+        data: scores,
+        backgroundColor: '#f8514988',
+        borderColor: '#f85149',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#8b949e' }, grid: { color: '#30363d' } },
+        y: { ticks: { color: '#8b949e', stepSize: 1 }, grid: { color: '#30363d' } }
+      }
+    }
+  });
+
+  // Recipients chart
+  const recipients = cases.map(c => c.recipient.split('@')[0]);
+  new Chart(document.getElementById('recipientChart'), {
+    type: 'doughnut',
+    data: {
+      labels: recipients,
+      datasets: [{
+        data: cases.map(() => 1),
+        backgroundColor: ['#f85149', '#f0883e', '#d29922']
+      }]
+    },
+    options: {
+      plugins: { legend: { labels: { color: '#c9d1d9' } } }
+    }
+  });
+
+  // Case filters
+  const searchInput = document.getElementById('searchCases');
+  const prioFilter = document.getElementById('filterPriority');
+  const statusFilter = document.getElementById('filterStatus');
+
+  function filterCases() {
+    const q = searchInput.value.toLowerCase();
+    const p = prioFilter.value;
+    const s = statusFilter.value;
+    document.querySelectorAll('.case-row').forEach(row => {
+      const matchQ = !q || row.dataset.search.toLowerCase().includes(q);
+      const matchP = !p || row.dataset.priority === p;
+      const matchS = !s || row.dataset.status === s;
+      row.classList.toggle('hidden', !(matchQ && matchP && matchS));
+    });
+  }
+  searchInput.addEventListener('input', filterCases);
+  prioFilter.addEventListener('change', filterCases);
+  statusFilter.addEventListener('change', filterCases);
+
+  document.querySelectorAll('.case-row').forEach(row => {
+    row.addEventListener('click', () => {
+      const link = row.querySelector('a');
+      if (link) window.location = link.href;
+    });
+  });
+
+  // Event type filter
+  document.getElementById('filterEventType').addEventListener('change', (e) => {
+    const t = e.target.value;
+    document.querySelectorAll('#eventsTable .event-row').forEach(row => {
+      row.classList.toggle('hidden', t && row.dataset.type !== t);
+    });
+  });
+</script>
+{% endblock %}
